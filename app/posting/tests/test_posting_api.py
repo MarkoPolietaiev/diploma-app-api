@@ -6,7 +6,10 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
-from core.models import Posting
+from core.models import (
+    Posting,
+    Tag,
+)
 from posting.serializers import (
     PostingSerializer,
     PostingDetailSerializer,
@@ -188,3 +191,86 @@ class PrivatePostingAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(Posting.objects.filter(id=posting.id).exists())
+    
+    def test_create_posting_with_new_tags(self):
+        """Test creating a posting with new tags."""
+        payload = {
+            'title': 'Test title',
+            'time_minutes': 45,
+            'tags': [{'name': 'Test tag'}, {'name': 'Test tag2'}]
+        }
+        res = self.client.post(POSTINGS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        postings = Posting.objects.filter(user=self.user)
+        self.assertEqual(postings.count(), 1)
+        posting = postings[0]
+        self.assertEqual(posting.tags.count(), 2)
+        for tag in payload['tags']:
+            exists = posting.tags.filter(
+                name=tag['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+    
+    def test_create_posting_with_existing_tags(self):
+        """Test creating a posting with existing tags."""
+        tag_indian = Tag.objects.create(user=self.user, name='Indian')
+        payload = {
+            'title': 'Test title',
+            'time_minutes': 45,
+            'tags': [{'name': 'Indian'}, {'name': 'Indian 2'}],
+        }
+        res = self.client.post(POSTINGS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        postings = Posting.objects.filter(user=self.user)
+        self.assertEqual(postings.count(), 1)
+        posting = postings[0]
+        self.assertEqual(posting.tags.count(), 2)
+        self.assertIn(tag_indian, posting.tags.all())
+        for tag in payload['tags']:
+            exists = posting.tags.filter(
+                name=tag['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+    
+    def test_create_tag_on_update(self):
+        """Test creating tag when updating a posting."""
+        posting = create_posting(user=self.user)
+
+        payload = {'tags':[{'name': 'Test Tag 3'}]}
+        url = detail_url(posting.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        new_tag = Tag.objects.get(user=self.user, name = 'Test Tag 3')
+        self.assertIn(new_tag, posting.tags.all())
+
+    def test_update_posting_assign_tag(self):
+        """Test assigning an existing tag when updating a posting."""
+        tag_breakfast = Tag.objects.create(user=self.user, name='Breakfast')
+        posting = create_posting(user=self.user)
+        posting.tags.add(tag_breakfast)
+
+        tag_lunch = Tag.objects.create(user=self.user, name='Lunch')
+        payload = {'tags': [{'name': 'Lunch'}]}
+        url = detail_url(posting.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(tag_lunch, posting.tags.all())
+        self.assertNotIn(tag_breakfast, posting.tags.all())
+    
+    def test_clear_tags(self):
+        """Test clearing a posting tags."""
+        tag = Tag.objects.create(user=self.user, name = 'Test Tag 3')
+        posting = create_posting(user=self.user)
+        posting.tags.add(tag)
+
+        payload = {'tags': []}
+        url = detail_url(posting.id)
+        res = self.client.patch(url, payload, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(posting.tags.count(), 0)

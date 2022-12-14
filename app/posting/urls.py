@@ -11,6 +11,7 @@ from posting import views
 
 router = DefaultRouter()
 router.register('postings', views.PostingViewSet)
+router.register('tags', views.TagViewSet)
 
 app_name = 'posting'
 
