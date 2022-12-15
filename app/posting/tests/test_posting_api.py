@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 from core.models import (
     Posting,
     Tag,
+    Step,
 )
 from posting.serializers import (
     PostingSerializer,
@@ -274,3 +275,86 @@ class PrivatePostingAPITests(TestCase):
         res = self.client.patch(url, payload, format='json')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(posting.tags.count(), 0)
+
+    def test_create_posting_with_new_steps(self):
+        """Test creating a posting with new steps."""
+        payload = {
+            'title': 'Test title',
+            'time_minutes': 45,
+            'steps': [{'name': 'Test step'}, {'name': 'Test step2'}],
+        }
+        res = self.client.post(POSTINGS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        postings = Posting.objects.filter(user=self.user)
+        self.assertEqual(postings.count(), 1)
+        posting = postings[0]
+        self.assertEqual(posting.steps.count(), 2)
+        for step in payload['steps']:
+            exists = posting.steps.filter(
+                name=step['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+    
+    def test_create_posting_with_existing_steps(self):
+        """Test creating a posting with existing steps."""
+        step_test = Step.objects.create(user=self.user, name='Test')
+        payload = {
+            'title': 'Test title',
+            'time_minutes': 45,
+            'steps': [{'name': 'Test'}, {'name': 'Test 2'}],
+        }
+        res = self.client.post(POSTINGS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        postings = Posting.objects.filter(user=self.user)
+        self.assertEqual(postings.count(), 1)
+        posting = postings[0]
+        self.assertEqual(posting.steps.count(), 2)
+        self.assertIn(step_test, posting.steps.all())
+        for step in payload['steps']:
+            exists = posting.steps.filter(
+                name=step['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+    
+    def test_create_step_on_update(self):
+        """Test creating step when updating a posting."""
+        posting = create_posting(user=self.user)
+
+        payload = {'steps':[{'name': 'Test Step 3'}]}
+        url = detail_url(posting.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        new_step = Step.objects.get(user=self.user, name='Test Step 3')
+        self.assertIn(new_step, posting.steps.all())
+
+    def test_update_posting_assign_step(self):
+        """Test assigning an existing step when updating a posting."""
+        step_test = Step.objects.create(user=self.user, name='Test')
+        posting = create_posting(user=self.user)
+        posting.steps.add(step_test)
+
+        step_test2 = Step.objects.create(user=self.user, name='Test2')
+        payload = {'steps': [{'name': 'Test2'}]}
+        url = detail_url(posting.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(step_test2, posting.steps.all())
+        self.assertNotIn(step_test, posting.steps.all())
+    
+    def test_clear_steps(self):
+        """Test clearing a posting steps."""
+        step = Step.objects.create(user=self.user, name = 'Test Step 3')
+        posting = create_posting(user=self.user)
+        posting.steps.add(step)
+
+        payload = {'steps': []}
+        url = detail_url(posting.id)
+        res = self.client.patch(url, payload, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(posting.steps.count(), 0)

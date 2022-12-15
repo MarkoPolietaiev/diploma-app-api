@@ -74,3 +74,10 @@ class ModelTests(TestCase):
         tag = models.Tag.objects.create(user=user, name='Tag1')
 
         self.assertEqual(str(tag), tag.name) 
+    
+    def test_create_step(self):
+        """Test creating a step is successful."""
+        user = create_user()
+        step = models.Step.objects.create(user=user, name='Step1')
+
+        self.assertEqual(str(step), step.name) 

@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from core.models import (
     Posting,
     Tag,
+    Step,
 )
 from posting import serializers
 
@@ -37,13 +38,23 @@ class PostingViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)        
 
 
-class TagViewSet(mixins.DestroyModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Manage tags in the database."""
-    serializer_class = serializers.TagSerializer
-    queryset = Tag.objects.all()
+class BasePostingAttrViewSet(mixins.DestroyModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+    """Base viewset for posting attributes."""
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """Retrieve tags for authenticated user."""
         return self.queryset.filter(user=self.request.user).order_by('-name')
+
+
+class TagViewSet(BasePostingAttrViewSet):
+    """Manage tags in the database."""
+    serializer_class = serializers.TagSerializer
+    queryset = Tag.objects.all()
+
+
+class StepViewSet(BasePostingAttrViewSet):
+    """Manage tags in the database."""
+    serializer_class = serializers.StepSerializer
+    queryset = Step.objects.all()
