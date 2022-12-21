@@ -14,7 +14,7 @@ class StepSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Step
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'image']
         read_only_fields = ['id']
 
 
