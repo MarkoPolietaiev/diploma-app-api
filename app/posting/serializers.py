@@ -89,3 +89,13 @@ class PostingDetailSerializer(PostingSerializer):
 
     class Meta(PostingSerializer.Meta):
         fields = PostingSerializer.Meta.fields + ['description']
+
+
+class StepImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading step image."""
+
+    class Meta:
+        model = Step
+        fields = ['id', 'image']
+        read_only_fields = ['id']
+        extra_kwargs = {'image':{'required': True}}
