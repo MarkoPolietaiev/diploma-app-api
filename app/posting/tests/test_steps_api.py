@@ -135,20 +135,20 @@ class ImageUploadTests(TestCase):
         payload = {'steps':[{'name': 'Test Step 1'}]}
         url = posting_detail_url(self.posting.id)
         res = self.client.patch(url, payload, format='json')
+        self.posting.refresh_from_db()
+        self.step = self.posting.steps.all()[0]
 
     def tearDown(self):
-        self.posting.steps.all()[0].image.delete()
+        self.step.image.delete()
     
     def test_upload_image(self):
         """Test uploading an image to a step."""
-        print(self.posting.steps.all())
         url = image_upload_url(self.posting.steps.all()[0].id)
         with tempfile.NamedTemporaryFile(suffix='.jpg') as image_file:
             img = Image.new('RGB', (10,10))
             img.save(image_file, format='JPEG')
             image_file.seek(0)
             payload = {'image': image_file}
-            print(url)
             res = self.client.post(url, payload, format='multipart')
 
         self.posting.refresh_from_db()
