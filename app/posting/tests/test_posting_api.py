@@ -358,3 +358,43 @@ class PrivatePostingAPITests(TestCase):
         res = self.client.patch(url, payload, format='json')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(posting.steps.count(), 0)
+    
+    def test_filter_by_tags(self):
+        """Test filtering by tags."""
+        p1 = create_posting(user=self.user, title='Posting 1')
+        p2 = create_posting(user=self.user, title='Posting 2')
+        tag1 = Tag.objects.create(user=self.user, name='Tag 1')
+        tag2 = Tag.objects.create(user=self.user, name='Tag 2')
+        p1.tags.add(tag1)
+        p2.tags.add(tag2)
+        p3 = create_posting(user=self.user, title='Posting 3')
+
+        params = {'tags': f'{tag1.id},{tag2.id}'}
+        res = self.client.get(POSTINGS_URL, params)
+        
+        s1 = PostingSerializer(p1)
+        s2 = PostingSerializer(p2)
+        s3 = PostingSerializer(p3)
+        self.assertIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)
+    
+    def test_filter_by_steps(self):
+        """Test filtering by steps."""
+        p1 = create_posting(user=self.user, title='Posting 1')
+        p2 = create_posting(user=self.user, title='Posting 2')
+        step1 = Step.objects.create(user=self.user, name='Step 1')
+        step2 = Step.objects.create(user=self.user, name='Step 2')
+        p1.steps.add(step1)
+        p2.steps.add(step2)
+        p3 = create_posting(user=self.user, title='Posting 3')
+
+        params = {'steps': f'{step1.id},{step2.id}'}
+        res = self.client.get(POSTINGS_URL, params)
+        
+        s1 = PostingSerializer(p1)
+        s2 = PostingSerializer(p2)
+        s3 = PostingSerializer(p3)
+        self.assertIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)

@@ -163,3 +163,42 @@ class ImageUploadTests(TestCase):
         res = self.client.post(url, payload, format='multipart')
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_filter_steps_assigned_to_postings(self):
+        """Test listing steps by those assigned to postings."""
+        step1 = Step.objects.create(user=self.user, name='Step Assigned Test 1')
+        step2 = Step.objects.create(user=self.user, name='Step Assigned Test 2')
+        posting = Posting.objects.create(
+            title='Posting Assigned Test 1',
+            time_minutes=15,
+            user=self.user,
+        )
+        posting.steps.add(step1)
+        
+        res = self.client.get(STEPS_URL, {'assigned_only': 1})
+
+        s1 = StepSerializer(step1)
+        s2 = StepSerializer(step2)
+        self.assertIn(s1.data, res.data)
+        self.assertNotIn(s2.data, res.data)
+    
+    def test_filtered_steps_unique(self):
+        """Test filtered steps returns a unique list."""
+        step = Step.objects.create(user=self.user, name='Step 1')
+        Step.objects.create(user=self.user, name='Step 2')
+        posting1 = Posting.objects.create(
+            title='Posting 1',
+            time_minutes=15,
+            user=self.user,
+        )
+        posting2 = Posting.objects.create(
+            title='Posting 2',
+            time_minutes=15,
+            user=self.user,
+        )
+        posting1.steps.add(step)
+        posting2.steps.add(step)
+
+        res = self.client.get(STEPS_URL, {'assigned_only': 1})
+
+        self.assertEqual(len(res.data), 2)
