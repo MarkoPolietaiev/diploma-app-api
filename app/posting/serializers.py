@@ -34,7 +34,7 @@ class PostingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Posting
-        fields = ['id', 'title', 'time_minutes', 'link', 'tags', 'steps',]
+        fields = ['id', 'title', 'description', 'time_minutes', 'link', 'tags', 'steps',]
         read_only_fields = ['id']
     
     def _get_or_create_tags(self, tags, posting):
